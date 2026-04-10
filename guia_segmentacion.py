@@ -1,17 +1,14 @@
-#importo imagen desde url
 import cv2
 import urllib.request
 import numpy as np
 import matplotlib as plt
 
-url = "https://www.pictoeduca.com/uploads/2017/07/eritrocitos.jpg" #erictrocitos
-req = urllib.request.urlopen(url)
-arr = np.asarray(bytearray(req.read()), dtype=np.uint8)
-image = cv2.imdecode(arr, -1)
+#leer imagen
+img=cv2.imread("1019.jpg",0)
 
 #otsu
-img=cv2.imread("1019.jpg",0)
 ret,thresh=cv2.threshold(img,0,255,cv2.THRESH_BINARY +cv2.THRESH_OTSU)
+
 cv2.imshow("Otsu", thresh)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
