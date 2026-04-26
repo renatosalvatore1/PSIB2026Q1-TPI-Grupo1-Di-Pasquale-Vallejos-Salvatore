@@ -1,0 +1,225 @@
+data:
+  attributes:
+    types:
+      resourceTypeGeneral: Dataset
+    contributors:
+      - name: Elena Filimonova
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 1
+      - name: Augusto Leone
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 2
+      - name: Francesco Carbone
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 3
+      - name: Matteo Zoli
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 4
+      - name: Jamil Rzaev
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 5
+      - name: Mariya Schukina
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 6
+      - name: Alessandro Carretta
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 7
+      - name: Andrea Bianconi
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 8
+      - name: Fabio Cofano
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 9
+      - name: Uwe Spetzger
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 10
+      - name: Safwan Roumia
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 11
+      - name: Veronica Di Napoli
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 12
+      - name: Nicola Pio Fochi
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 13
+      - name: Valeria Interno
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 14
+      - name: Guido Giordano
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 15
+      - name: Antonello Curcio
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 16
+      - name: Flavio Angileri
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 17
+      - name: Francesco Signorelli
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 18
+      - name: Camillo Porta
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 19
+      - name: Khue Luu Minh Sao
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 20
+      - name: Margaret Benedichuk
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 21
+      - name: Ahsan Shakoor
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 22
+      - name: Bair Tuchinov
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 23
+      - name: Antonio Colamaria
+        givenName: ''
+        familyName: ''
+        nameType: Personal
+        nameIdentifiers: []
+        contributorType: Researcher
+        order: 24
+    creators:
+      - name: Elena Filimonova
+        nameType: Personal
+      - name: Augusto Leone
+        nameType: Personal
+      - name: Francesco Carbone
+        nameType: Personal
+      - name: Matteo Zoli
+        nameType: Personal
+      - name: Jamil Rzaev
+        nameType: Personal
+      - name: Mariya Schukina
+        nameType: Personal
+      - name: Alessandro Carretta
+        nameType: Personal
+      - name: Andrea Bianconi
+        nameType: Personal
+      - name: Fabio Cofano
+        nameType: Personal
+      - name: Uwe Spetzger
+        nameType: Personal
+      - name: Safwan Roumia
+        nameType: Personal
+      - name: Veronica Di Napoli
+        nameType: Personal
+      - name: Nicola Pio Fochi
+        nameType: Personal
+      - name: Valeria Interno
+        nameType: Personal
+      - name: Guido Giordano
+        nameType: Personal
+      - name: Antonello Curcio
+        nameType: Personal
+      - name: Flavio Angileri
+        nameType: Personal
+      - name: Francesco Signorelli
+        nameType: Personal
+      - name: Camillo Porta
+        nameType: Personal
+      - name: Khue Luu Minh Sao
+        nameType: Personal
+      - name: Margaret Benedichuk
+        nameType: Personal
+      - name: Ahsan Shakoor
+        nameType: Personal
+      - name: Bair Tuchinov
+        nameType: Personal
+      - name: Antonio Colamaria
+        nameType: Personal
+    descriptions:
+      - description: N/A
+        descriptionType: Abstract

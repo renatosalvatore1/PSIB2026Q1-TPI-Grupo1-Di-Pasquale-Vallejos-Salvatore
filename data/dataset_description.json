@@ -1,0 +1,32 @@
+{
+    "BIDSVersion": "1.8.0",
+    "Name": "Real-world Multi-Institutional Glioblastoma MRI Dataset with Standardized Preprocessing, Expert-Validated Segmentation, and MGMT Promoter Profiling",
+    "Authors": [
+        "Elena Filimonova",
+        "Augusto Leone",
+        "Francesco Carbone",
+        "Matteo Zoli",
+        "Jamil Rzaev",
+        "Mariya Schukina",
+        "Alessandro Carretta",
+        "Andrea Bianconi",
+        "Fabio Cofano",
+        "Uwe Spetzger",
+        "Safwan Roumia",
+        "Veronica Di Napoli",
+        "Nicola Pio Fochi",
+        "Valeria Interno",
+        "Guido Giordano",
+        "Antonello Curcio",
+        "Flavio Angileri",
+        "Francesco Signorelli",
+        "Camillo Porta",
+        "Bair Tuchinov",
+        "Antonio Colamaria"
+    ],
+    "DatasetDOI": "doi:10.18112/openneuro.ds007045.v1.0.1",
+    "License": "CC0",
+    "EthicsApprovals": [
+        "The study complied with all relevant regulations and with the principles of the Declaration of Helsinki. Formal ethical committee approval for anonymized data collection and publication was obtained at the University of Foggia and approved by all participating centers (46-CE-2023). "
+    ]
+}
