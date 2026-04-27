@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 import os
 
-data = nib.load("./data/sub-KA72/anat/sub-KA72_run-02_T1w.nii.gz").get_fdata()
+data = nib.load("./data/sub-KA02/anat/sub-KA02_run-02_T1w.nii.gz").get_fdata()
 
 fig, ax = plt.subplots(figsize=(6, 6))
 plt.subplots_adjust(bottom=0.15)
