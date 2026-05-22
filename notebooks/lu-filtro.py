@@ -112,7 +112,7 @@ mean_esquina = np.mean(esquina)
 sigma = mean_esquina / np.sqrt(np.pi/2)
 
 #correción de sesgo
-squared = image**4 - 2*(sigma**2) 
+squared = image**1 - 2*(sigma**2) 
 '''
 Al modificar image** X, mejoramos la "separacion" entre tumor y cerebro
 '''
