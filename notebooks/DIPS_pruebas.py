@@ -33,64 +33,34 @@ from skimage import filters, morphology, measure, exposure ,feature
 from skimage.restoration import denoise_nl_means, estimate_sigma
 from skimage.feature import graycomatrix, graycoprops
 
-'''
-Atlas anatomico
-basado en divisiones lobulares y zonas funcionales estandar
+# REEMPLAZAR todo el bloque del atlas por esto:
+from nilearn import datasets, image
+from nilearn.image import load_img
 
-El volumen tiene coordenadas normalizadas de 0 a 1 en cada eje
-Eje X → izquierda (0) a derecha (1)
-Eje Y → posterior (0) a anterior (1)  
-Eje Z → inferior (0) a superior (1)
+_atlas      = datasets.fetch_atlas_harvard_oxford('cort-maxprob-thr25-2mm')
+_atlas_img  = load_img(_atlas.maps)
+_atlas_data = _atlas_img.get_fdata()
+_atlas_aff  = _atlas_img.affine
 
-Frontal ocupa ~el tercio anterior del cerebro  → Y: 0.5 a 1.0
-Occipital está en la parte posterior           → Y: 0.0 a 0.35
-Cerebelo está abajo y atrás                   → Z: 0.0 a 0.4
-Tronco encefálico está en el centro inferior  → Z: 0.1 a 0.35
+# En Harvard-Oxford los labels vienen como lista directa
+AAL_LABELS  = {i: name for i, name in enumerate(_atlas.labels)}
 
-'''
-BRAIN_ATLAS = {
-    # (nombre, x_min, x_max, y_min, y_max, z_min, z_max, descripcion_funcional)
-    "Lóbulo Frontal (izq)":      (0.0,  0.45, 0.5,  1.0,  0.4,  1.0,  "Motor primario, lenguaje expresivo (Broca), funciones ejecutivas, personalidad"),
-    "Lóbulo Frontal (der)":      (0.55, 1.0,  0.5,  1.0,  0.4,  1.0,  "Control inhibitorio, atención, planificación"),
-    "Área de Broca":             (0.55, 0.75, 0.55, 0.75, 0.35, 0.55, "⚠️ CRÍTICO: Producción del lenguaje hablado"),
-    "Área de Wernicke":          (0.55, 0.75, 0.4,  0.6,  0.45, 0.65, "⚠️ CRÍTICO: Comprensión del lenguaje"),
-    "Corteza Motora Primaria":   (0.2,  0.8,  0.55, 0.75, 0.5,  0.75, "⚠️ CRÍTICO: Control motor voluntario (contralateral)"),
-    "Corteza Somatosensorial":   (0.2,  0.8,  0.45, 0.65, 0.5,  0.75, "⚠️ CRÍTICO: Sensibilidad táctil y propioceptiva"),
-    "Lóbulo Parietal (izq)":     (0.0,  0.45, 0.35, 0.6,  0.5,  0.8,  "Integración sensorial, lectura, escritura, cálculo"),
-    "Lóbulo Parietal (der)":     (0.55, 1.0,  0.35, 0.6,  0.5,  0.8,  "Orientación espacial, atención visuoespacial"),
-    "Lóbulo Temporal (izq)":     (0.0,  0.4,  0.3,  0.6,  0.2,  0.5,  "⚠️ CRÍTICO: Memoria, lenguaje, audición"),
-    "Lóbulo Temporal (der)":     (0.6,  1.0,  0.3,  0.6,  0.2,  0.5,  "Reconocimiento facial, música, procesamiento emocional"),
-    "Lóbulo Occipital":          (0.2,  0.8,  0.0,  0.35, 0.3,  0.7,  "Procesamiento visual primario"),
-    "Cerebelo":                  (0.15, 0.85, 0.0,  0.3,  0.0,  0.4,  "⚠️ CRÍTICO: Coordinación motora, equilibrio, marcha"),
-    "Tronco Encefálico":         (0.35, 0.65, 0.15, 0.4,  0.1,  0.35, "⚠️ CRÍTICO: Funciones vitales (respiración, conciencia, pares craneales)"),
-    "Hipocampo (izq)":           (0.15, 0.4,  0.3,  0.5,  0.25, 0.45, "⚠️ CRÍTICO: Memoria episódica, navegación espacial"),
-    "Hipocampo (der)":           (0.6,  0.85, 0.3,  0.5,  0.25, 0.45, "Memoria espacial"),
-    "Ganglios Basales":          (0.3,  0.7,  0.4,  0.6,  0.3,  0.55, "⚠️ CRÍTICO: Control motor, hábitos, recompensa"),
-    "Cuerpo Calloso":            (0.3,  0.7,  0.45, 0.65, 0.45, 0.65, "Comunicación inter-hemisférica"),
-    "Corteza Visual Primaria":   (0.2,  0.8,  0.0,  0.2,  0.35, 0.65, "⚠️ CRÍTICO: Visión"),
-    "Ínsula":                    (0.1,  0.4,  0.4,  0.6,  0.3,  0.55, "Dolor, interoceptión, conciencia"),
-}
+CRITICAL_KEYWORDS = [
+    "Precentral",
+    "Broca",
+    "Superior Temporal",
+    "Cerebellum",
+    "Hippocampus",
+    "Putamen",
+    "Caudate",
+    "Pallidum",
+    "Thalamus",
+    "Postcentral",
+    "Calcarine",
+]
 
-CRITICAL_ZONES = {k for k, v in BRAIN_ATLAS.items() if "⚠️" in v[-1]}
-'''Flujo completo de clase
-MRITumorAnalyzer(filepath)
-        │
-        ▼
-   __init__()          ← arranca todo
-        │
-        ├─→ _preprocess()        ← limpia la imagen
-        │
-        ├─→ _detect_tumor()      ← busca el tumor
-        │
-        ├─→ _analyze_regions()   ← mide y localiza
-        │
-        ├─→ _analyze_textures()  ← texturas GLCM
-        │
-        └─→ _print_report()      ← imprime en consola
-
-   .show()             ← abre el visualizador (lo llamás aparte)
-'''
-
+def is_critical(label_name: str) -> bool:
+    return any(kw.lower() in label_name.lower() for kw in CRITICAL_KEYWORDS)
 # ═══════════════════════════════════════════════════════════════
 #  CLASE PRINCIPAL
 # ═══════════════════════════════════════════════════════════════
@@ -359,20 +329,32 @@ class MRITumorAnalyzer: # empezamos definiendo la clase principal que va a manej
 
     def _locate_anatomical(self, cx, cy, cz) -> tuple:
         """
-        Devuelve lista de zonas anatómicas donde cae el centroide
-        y si alguna es zona crítica.
+        Convierte centroide en vóxeles → coordenadas MNI reales usando la affine,
+        luego busca a qué región del atlas AAL corresponde.
         """
-        matched = []
-        for zone_name, bounds in BRAIN_ATLAS.items():
-            xmin, xmax, ymin, ymax, zmin, zmax, _ = bounds
-            if xmin <= cx <= xmax and ymin <= cy <= ymax and zmin <= cz <= zmax:
-                matched.append(zone_name)
+        # Vóxel → mm MNI usando la affine real de la imagen
+        voxel_hom = np.array([cx, cy, cz, 1.0])
+        mni_coords = self.affine @ voxel_hom
+        mx, my, mz = mni_coords[:3]
 
-        if not matched:
-            matched = ["Zona no especificada en atlas"]
+        # Coordenadas MNI → vóxel en el espacio del atlas AAL
+        inv_aff = np.linalg.inv(_atlas_aff)
+        atlas_vox = inv_aff @ np.array([mx, my, mz, 1.0])
+        ax, ay, az = [int(round(v)) for v in atlas_vox[:3]]
 
-        critical = [z for z in matched if z in CRITICAL_ZONES]
-        return matched, critical
+        # Verificar que esté dentro del volumen del atlas
+        shape = _atlas_data.shape
+        if not (0 <= ax < shape[0] and 0 <= ay < shape[1] and 0 <= az < shape[2]):
+            return ["Fuera del espacio del atlas"], []
+
+        # Buscar etiqueta en el atlas
+        label_idx = int(_atlas_data[ax, ay, az])
+        if label_idx == 0:
+            return ["Zona no especificada en atlas AAL"], []
+
+        label_name = AAL_LABELS.get(label_idx, f"Región AAL {label_idx}")
+        critical = [label_name] if is_critical(label_name) else []
+        return [label_name], critical
 
     # ──────────────────────────────────────────
     #  4. ANÁLISIS DE TEXTURAS
@@ -449,17 +431,13 @@ class MRITumorAnalyzer: # empezamos definiendo la clase principal que va a manej
             print(f"  • Señal:      media={reg['mean_int']:.3f}  máx={reg['max_int']:.3f}")
             print(f"\n  Localización anatómica:")
             for loc in reg["locations"]:
-                marker = "⚠️ " if loc in CRITICAL_ZONES else "   "
-                desc = BRAIN_ATLAS.get(loc, ("","","","","","",""))[6]
+                marker = "⚠️ " if is_critical(loc) else "   "
                 print(f"    {marker}{loc}")
-                if desc:
-                    print(f"       → {desc}")
 
             if reg["critical"]:
                 print(f"\n  🔴 ZONAS CRÍTICAS INVOLUCRADAS:")
                 for cz in reg["critical"]:
-                    desc = BRAIN_ATLAS[cz][6]
-                    print(f"     ⚠️  {cz}: {desc}")
+                    print(f"     ⚠️  {cz}")
 
             if rid in self.textures:
                 tx = self.textures[rid]
@@ -579,7 +557,7 @@ class MRITumorAnalyzer: # empezamos definiendo la clase principal que va a manej
             y -= 0.02
             txt("Localización:", '#4a90d9', 9, True)
             for loc in reg["locations"]:
-                is_crit = loc in CRITICAL_ZONES
+                is_crit = is_critical(loc)
                 col = '#ff6b6b' if is_crit else '#aaaaaa'
                 prefix = "⚠ " if is_crit else "• "
                 txt(f"{prefix}{loc}", col, 8)
@@ -588,8 +566,7 @@ class MRITumorAnalyzer: # empezamos definiendo la clase principal que va a manej
                 y -= 0.02
                 txt("🔴 ZONAS CRÍTICAS:", '#ff4444', 9, True)
                 for cz in reg["critical"]:
-                    desc = BRAIN_ATLAS[cz][6].replace("⚠️ CRÍTICO: ", "")
-                    txt(f"  {desc}", '#ff8888', 7)
+                    txt(f"  {cz}", '#ff8888', 7)
 
             if rid in self.textures:
                 y -= 0.02
