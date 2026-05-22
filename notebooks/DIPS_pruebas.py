@@ -181,14 +181,21 @@ class MRITumorAnalyzer: # empezamos definiendo la clase principal que va a manej
         brain_vals = vol[self.brain_mask]
         thresh_otsu = filters.threshold_otsu(brain_vals)
 
-        # Umbral más exigente para detectar hiperseñal (zonas realzadas = tumor activo)
-        # En T1c, el tumor realzado está entre ~85-99 percentil
-        thresh_high = np.percentile(brain_vals, 87) # agarra mas zona de edema
-        # Esto agarra todo lo que está arriba del 87% de brillo
-        # → materia blanca normal también es brillante → falsos positivos
-        thresh = max(thresh_otsu * 1.15, thresh_high)
+        thresh_high  = np.percentile(brain_vals, 85)
+        thresh_low   = np.percentile(brain_vals, 15)
+        thresh = max(thresh_otsu * 1.05, thresh_high)
 
+        # Zona brillante (borde del tumor)
         bright_mask = (vol > thresh) & self.brain_mask
+
+        # Detectar anillo: dilatar zona brillante y buscar centro oscuro adentro
+        from scipy.ndimage import binary_dilation
+        bright_dilated = binary_dilation(bright_mask, morphology.ball(4))
+        dark_core = (vol < thresh_low) & bright_dilated & self.brain_mask & ~bright_mask
+
+        # Unir borde brillante + centro oscuro → región de tumor completa
+        ring_mask = bright_mask | dark_core
+        bright_mask = ring_mask
 
         # ── Simetría bilateral ──────────────────────────────────
         # Voltear horizontalmente y restar → resaltar asimetrías
@@ -282,8 +289,8 @@ class MRITumorAnalyzer: # empezamos definiendo la clase principal que va a manej
             zs = coords[:, 2]
             slices_span = (int(zs.min()), int(zs.max()))
 
-            # Localización anatómica
-            locations, critical = self._locate_anatomical(cx_n, cy_n, cz_n)
+            # Localización anatómica-pasar coordenadas reales en vóxeles:
+            locations, critical = self._locate_anatomical(centroid[0], centroid[1], centroid[2])
 
             # Hemisferio
             hemisphere = "Izquierdo" if cx_n < 0.5 else "Derecho"
