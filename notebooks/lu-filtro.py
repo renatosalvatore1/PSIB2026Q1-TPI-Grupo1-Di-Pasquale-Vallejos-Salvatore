@@ -18,7 +18,7 @@ def al_presionar_tecla(event):
 #_____________________________________________________________________________
 
 data = nib.load('./data/sub-KA02/anat/sub-KA02_run-02_T1w.nii.gz').get_fdata()
-frame = data[:,:,89]
+frame = data[:,:,200]
 frame_n = cv2.normalize(frame, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U) #dicom trabaja con 16bits, cv2 con 8
 
 #_____________________________________________________________________________
@@ -48,8 +48,11 @@ Para tratar estos ruidos se propone aplicar un filtro Gaussiano y un filtro medi
 #_____________________________________________________________________________
 #APLICACIÓN DE FILTROS MEDIANA Y GAUSSIANO
 #_____________________________________________________________________________
-mediana = cv2.medianBlur(frame_n,ksize=5)
-gaussiano = cv2.GaussianBlur(frame_n, ksize=(5, 5), sigmaX=2, sigmaY=2, borderType=cv2.BORDER_CONSTANT)
+mediana = cv2.medianBlur(frame_n,ksize=3)
+
+'''Esto modificar para que no se borrene tanto, sigma y alpha'''
+gaussiano = cv2.GaussianBlur(frame_n, ksize=(3, 3), sigmaX=1, sigmaY=1, borderType=cv2.BORDER_CONSTANT)
+
 hist_m = cv2.calcHist([mediana],[0],None,[256],[0,256])
 hist_g = cv2.calcHist([gaussiano],[0],None,[256],[0,256])
 
@@ -109,10 +112,13 @@ mean_esquina = np.mean(esquina)
 sigma = mean_esquina / np.sqrt(np.pi/2)
 
 #correción de sesgo
-squared = image**2 - 2*(sigma**2)
+squared = image**4 - 2*(sigma**2) 
+'''
+Al modificar image** X, mejoramos la "separacion" entre tumor y cerebro
+'''
 corrected = np.sqrt(np.maximum(squared,0))
 
-h = 0.7 * sigma #filtrado Non-Local Means
+h = 0.8 * sigma #filtrado Non-Local Means
 
 filtrada = denoise_nl_means(corrected,h=h,sigma=sigma,fast_mode=True,patch_size=5,patch_distance=11,channel_axis=None)
     #patch_size=5, patch_distance=11 estandar para mri estructural T1,T2.
