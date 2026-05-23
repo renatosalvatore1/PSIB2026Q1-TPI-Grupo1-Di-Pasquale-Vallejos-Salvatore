@@ -10,3 +10,8 @@ __pycache__/
 # Mac
 .DS_Store
 .vscode
+
+git rm --cached ds003969
+echo "ds003969/" >> .gitignore
+git add .gitignore
+git commit -m "ignorar dataset"
