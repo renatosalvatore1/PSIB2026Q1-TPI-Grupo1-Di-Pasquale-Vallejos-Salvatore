@@ -102,27 +102,36 @@ print(f"  Rango frame: [{frame.min():.1f}, {frame.max():.1f}]")
 # ══════════════════════════════════════════════════════════════
 print("\n[1/4] Preprocesando (NL-means + Gaussiano)...")
 
-# Normalizar a [0,1] para skimage
+# Normalizar a [0,1]
 f_min, f_max = frame.min(), frame.max()
-frame_norm = (frame - f_min) / (f_max - f_min + 1e-9)
+image = (frame - f_min) / (f_max - f_min)
 
 # Estimar sigma en esquina sin anatomía
-esquina      = frame_norm[0:40, 0:40]
-sigma_ruido  = np.mean(esquina) / np.sqrt(np.pi / 2)
-sigma_ruido  = max(sigma_ruido, 1e-4)   # evitar cero
+centro      = image[image.shape[0]//4 : image.shape[0]*3//4,
+                    image.shape[1]//4 : image.shape[1]*3//4]
+sigma_ruido = np.std(centro) * 0.1
+sigma_ruido = max(sigma_ruido, 0.02)
+
+# Corrección de sesgo (mejora separación tumor/cerebro)
+squared   = image**4 - 2 * (sigma_ruido**2)
+corrected = np.sqrt(np.maximum(squared, 0))
 
 # NL-means
+h_nlm    = 0.8 * sigma_ruido
 frame_nl = denoise_nl_means(
-    frame_norm, h=0.8 * sigma_ruido, sigma=sigma_ruido,
+    corrected, h=h_nlm, sigma=sigma_ruido,
     fast_mode=True, patch_size=5, patch_distance=11, channel_axis=None
 )
 
-# Gaussiano suave encima del NL-means
-frame_gauss = gaussian_filter(frame_nl, sigma=0.8)
+# Restaurar rango dinámico original
+frame_nl = (frame_nl * (f_max - f_min)) + f_min
+
+# Normalizar a [0,1] nuevamente para el resto del pipeline
+frame_gauss = (frame_nl - frame_nl.min()) / (frame_nl.max() - frame_nl.min() + 1e-9)
 
 print("  Preprocesamiento completado ✓")
-
-
+print(f"  sigma_ruido: {sigma_ruido:.6f}")
+print(f"  h_nlm: {h_nlm:.6f}")
 # ══════════════════════════════════════════════════════════════
 #  PASO 3 — SKULL STRIPPING + SEGMENTACIÓN  (de Nato)
 # ══════════════════════════════════════════════════════════════
@@ -162,7 +171,7 @@ print("  Skull stripping completado ✓")
 print("\n[3/4] Detectando tumor (patrón anillo)...")
 
 brain_vals  = frame_stripped[mascara_rellena]
-thresh_high = np.percentile(brain_vals, 91) # más exigente → solo lo más brillante
+thresh_high = np.percentile(brain_vals, 22) # mas alto valor , más exigente → solo lo más brillante, mayor a 50 no detecta nada xq la region tumoral no es tan brillante,  50 es el limite maximo
 thresh_low  = np.percentile(brain_vals, 15)
 
 # Borde brillante del tumor
@@ -170,7 +179,7 @@ bright_mask = (frame_stripped > thresh_high) & mascara_rellena
 
 # Centro oscuro rodeado de zona brillante (necrosis)
 from scipy.ndimage import binary_dilation
-bright_dilated = binary_dilation(bright_mask, morphology.disk(3))# radio más chico
+bright_dilated = binary_dilation(bright_mask, morphology.disk(5))# radio más chico
 dark_core      = (frame_stripped < thresh_low) & bright_dilated & mascara_rellena & ~bright_mask
 
 # Unir borde + núcleo
@@ -200,7 +209,7 @@ for reg in regionprops(labeled_tumor):
 
     # Filtro 2 — varianza interna alta: el tumor tiene centro oscuro + borde brillante
     region_vals = frame_stripped[labeled_tumor == reg.label]
-    if region_vals.std() < 0.08:
+    if region_vals.std() < 0.04:
         continue
 
     # Filtro 3 — no estar en el centro sagital (hoz cerebral)
@@ -260,7 +269,10 @@ fig.suptitle(f"Análisis frame {FRAME}  |  sub-KA02_run-02_T1w",
              color='white', fontsize=13, fontweight='bold')
 
 titulos = ["Original", "Preprocesado (NL + Gauss)", "Segmentación + Localización"]
-imagenes = [frame_norm, frame_gauss, frame_gauss]
+# Normalizar el original solo para mostrarlo
+frame_display = (frame - frame.min()) / (frame.max() - frame.min() + 1e-9)
+
+imagenes = [frame_display, frame_gauss, frame_gauss]
 
 for ax, img_data, titulo in zip(axes, imagenes, titulos):
     ax.imshow(img_data.T, cmap='gray', origin='lower', aspect='auto')
