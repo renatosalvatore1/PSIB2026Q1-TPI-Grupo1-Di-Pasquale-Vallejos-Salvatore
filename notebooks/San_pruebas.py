@@ -28,8 +28,8 @@ from nilearn.image import load_img
 # ══════════════════════════════════════════════════════════════
 #  CONFIGURACIÓN — modificar acá si cambia el archivo o el corte
 # ══════════════════════════════════════════════════════════════
-RUTA_ARCHIVO = "./data/sub-KA02/anat/sub-KA02_run-02_T1w.nii.gz"
-FRAME        = 200   # corte axial a analizar
+RUTA_ARCHIVO = "./data/sub-KA33/anat/sub-KA33_run-02_T1w.nii.gz"
+FRAME        = 166   # corte axial a analizar
 
 # ══════════════════════════════════════════════════════════════
 #  ATLAS HARVARD-OXFORD
