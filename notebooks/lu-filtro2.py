@@ -45,6 +45,7 @@ def nl_means(image,exponente):
     
 
 filtro2=nl_means(frame_n,4)
+filtro=nl_means(frame_n,2)
 
 fig,axs = plt.subplots(1,2,figsize=(15,10))
 axs[0].imshow(frame_n, cmap='gray')
