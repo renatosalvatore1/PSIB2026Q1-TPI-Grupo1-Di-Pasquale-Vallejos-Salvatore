@@ -14,80 +14,83 @@ from skimage.measure import regionprops, label
 #COLSULTAR SI PODEMOS USAR ESTO
 from scipy.ndimage import binary_fill_holes
 
-data = nib.load("../data/sub-KA02/anat/sub-KA02_run-02_T1w.nii.gz").get_fdata()
+import nibabel as nib
+import skimage 
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+from skimage import filters, color, io
+from skimage import segmentation
+from skimage import morphology
+from skimage.morphology import opening, closing, disk, footprint_rectangle, erosion
+from skimage.measure import label, regionprops
+#COLSULTAR SI PODEMOS USAR ESTO
+from scipy.ndimage import binary_fill_holes
 
-#SKULL STRIPPING
 
-class SkullStripper:
-    def __init__ (self,volumen,capa):
-        self.capa = capa
-        self.volumen = volumen
-        self.mascara = None
-        self.resultado = None
 
-    def umbral(self):
-        umbral = filters.threshold_otsu(self.volumen)
-        self.imagen_binaria = self.volumen > umbral
-        print("IMAGEN UMBRALIZADA")
-        plt.imshow(self.imagen_binaria[:,:],cmap='gray')
-        plt.show()
 
-    def aplicar_morfologia(self):
-        self.imagen_binaria_erosionada = erosion(self.imagen_binaria, footprint_rectangle((1,2)))
-        print("POST EROSION")
-        plt.imshow(self.imagen_binaria_erosionada[:,:],cmap='gray')
-        plt.show()
-        self.imagen_binaria_closing = closing(self.imagen_binaria_erosionada, footprint_rectangle((1,2)))
-        print("POST CLOSING")
-        plt.imshow(self.imagen_binaria_closing[:,:],cmap='gray')
-        plt.show()
-        
-    def etiquetado_y_mascara(self):
-        etiquetas = label(self.imagen_binaria_closing, connectivity=2)
-        propiedades = regionprops(etiquetas)
-        #areas = [region.area for region in propiedades]
-        #print("Cantidad de componentes:", len(areas))
-        #print("Area de la componente mayor:", max(areas))
-        #indice = np.argmax(areas)
-        solidez = [region.solidity for region in propiedades]
-        print(solidez)
-        eliminar = (solidez != max(solidez)) & (solidez != min(solidez))
-        print(eliminar)
-        solidez = solidez*eliminar
-        print(solidez)
-        indice = np.argmax(solidez)
-        mascara = 0
-        n = 0
-        for i in range(len(solidez)):
-            if solidez[i] != min(solidez):
-                n = etiquetas == (i+1)
-            mascara = mascara + n
-        print("MASCARA ANTES DE FILL HOLES")
-        plt.imshow(mascara[:,:], cmap='gray')
-        plt.show()
-        mascara_rellena = binary_fill_holes(mascara)
-        self.resultado = self.volumen * mascara_rellena
-        print("MASCARA")
-        plt.imshow(mascara_rellena[:,:],cmap='gray')
-        plt.show()
-        
-        self.resultado = self.volumen * mascara_rellena
-        print("RESULTADO")
-        plt.imshow(self.resultado[:,:],cmap='gray')
-        plt.show()
-        print("frame")
-        plt.imshow(self.volumen[:,:],cmap='gray')
-        plt.show()
 
-    def strip(self):
-        self.umbral()
-        self.aplicar_morfologia()
-        self.etiquetado_y_mascara()
-        return self.resultado
+def segmentar_craneo(corte):
+#umbral
+    umbral = filters.threshold_otsu(corte)
+    imagen_binaria = corte > umbral
+    print("IMAGEN UMBRALIZADA")
+    plt.imshow(imagen_binaria[:,:],cmap='gray')
+    plt.show()
 
-volumen = data[:,:,170]
-stripper = SkullStripper(volumen,170)
-resultado = stripper.strip()
+#aplicamos morfologia
+    imagen_binaria_erosionada = erosion(imagen_binaria, footprint_rectangle((1,2)))
+    print("POST EROSION")
+    plt.imshow(imagen_binaria_erosionada[:,:],cmap='gray')
+    plt.show()
+    imagen_binaria_closing = closing(imagen_binaria_erosionada, footprint_rectangle((1,2)))
+    print("POST CLOSING")
+    plt.imshow(imagen_binaria_closing[:,:],cmap='gray')
+    plt.show()
+    
+#etiquetado y mascara
+    etiquetas = label(imagen_binaria_closing, connectivity=2)
+    propiedades = regionprops(etiquetas)
+    #areas = [region.area for region in propiedades]
+    #print("Cantidad de componentes:", len(areas))
+    #print("Area de la componente mayor:", max(areas))
+    #indice = np.argmax(areas)
+    solidez = np.array([region.solidity for region in propiedades])
+    print(solidez)
+    eliminar = (solidez != solidez.max()) & (solidez != solidez.min())
+    print(eliminar)
+    solidez = solidez*eliminar
+    print(solidez)
+    indice = np.argmax(solidez)
+    mascara = 0
+    n = 0
+    for i in range(len(solidez)):
+        if solidez[i] != solidez.min():
+            n = etiquetas == (i+1)
+        mascara = mascara + n
+    print("MASCARA ANTES DE FILL HOLES")
+    plt.imshow(mascara[:,:], cmap='gray')
+    plt.show()
+    mascara_rellena = binary_fill_holes(mascara)
+    resultado = corte * mascara_rellena
+    print("MASCARA")
+    plt.imshow(mascara_rellena[:,:],cmap='gray')
+    plt.show()
+    
+    resultado = corte * mascara_rellena
+    print("RESULTADO")
+    plt.imshow(resultado[:,:],cmap='gray')
+    plt.show()
+    print("corte")
+    plt.imshow(corte[:,:],cmap='gray')
+    plt.show()
+    return resultado
+
+
+
+
+
 
 #AUMENTAR CONTRASTE
 def aumentar_contraste(frame):
@@ -105,21 +108,6 @@ def aumentar_contraste(frame):
     
     cerebro_contraste_aumentado = np.sqrt(np.maximum(squared,0))
     return cerebro_contraste_aumentado
-
-#SEGMENTACION TUMOR
-
-def segmentacion_tumor(cerebro_contraste_aumentado): 
-    umbrales = filters.threshold_multiotsu(cerebro_contraste_aumentado, classes=3)
-    imagen_binaria = cerebro_contraste_aumentado > umbrales[1]
-    etiquetas = label(imagen_binaria, connectivity=2)
-    propiedades = regionprops(etiquetas)
-    areas = np.array([region.area for region in propiedades])
-    indice_area_mayor = np.argmax(areas) + 1
-    mascara = etiquetas == indice_area_mayor
-    mascara_tumor = binary_fill_holes(mascara)
-    tumor_segmentado = resultado * mascara_tumor
-    return tumor_segmentado,mascara_tumor
-
 
 
 #ANALISIS DE TEXTURAS
@@ -157,4 +145,42 @@ def analisis_texturas(frame,mascara_tumor):
         resultado_glcm.append([feature, promedio_sano, promedio_tumor])
 
     return resultado_glcm
+
+#SEGMENTACION TUMOR
+
+def segmentacion_tumor(cerebro_contraste_aumentado,corte,cerebro_segmentado): 
+    tumor_detectado = 0
+    umbrales = filters.threshold_multiotsu(cerebro_contraste_aumentado, classes=3)
+    imagen_binaria = cerebro_contraste_aumentado > umbrales[1]
+    etiquetas = label(imagen_binaria, connectivity=2)
+    propiedades = regionprops(etiquetas)
+    areas = np.array([region.area for region in propiedades])
+    indice_area_mayor = np.argmax(areas) + 1
+    mascara = etiquetas == indice_area_mayor
+    mascara_tumor = binary_fill_holes(mascara)
+    tumor_segmentado = cerebro_segmentado * mascara_tumor
+
+    solidez = np.array([region.solidity for region in propiedades])
+    #print(solidez[indice_area_mayor-1])
+    plt.imshow(mascara,cmap='gray')
+    plt.show()
+    plt.imshow(mascara_tumor,cmap='gray')
+    plt.show()
+    plt.imshow(tumor_segmentado,cmap='gray')
+    plt.show()
+    #llamamos glcm
+    resultado_glcm = analisis_texturas(corte,mascara_tumor)
+
+    homogeneidad = resultado_glcm[1][2]
+    print(homogeneidad)
+    if homogeneidad > 0.68:
+        tumor_detectado = 0 #no se detecto tumor
+    else:
+        tumor_detectado = 1 #se detecto tumor
+
+    return resultado_glcm,tumor_detectado
+
+
+
+
 
