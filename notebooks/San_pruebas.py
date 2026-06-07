@@ -29,7 +29,7 @@ from nilearn.image import load_img
 #  CONFIGURACIÓN — modificar acá si cambia el archivo o el corte
 # ══════════════════════════════════════════════════════════════
 RUTA_ARCHIVO = "./data/sub-KA33/anat/sub-KA33_run-02_T1w.nii.gz"
-FRAME        = 166   # corte axial a analizar
+FRAME        = 200   # corte axial a analizar
 
 # ══════════════════════════════════════════════════════════════
 #  ATLAS HARVARD-OXFORD
@@ -47,32 +47,47 @@ CRITICAL_KEYWORDS = [
     "Thalamus", "Postcentral", "Calcarine",
 ]
 
+
+'''
+El atlas es un volumen 3D donde cada voxel tiene un numero entero que indica a que region antomica pertenece
+_atlas_data[x, y, z] = 23   → "Precentral Gyrus"
+_atlas_data[x, y, z] = 0    → fuera del cerebro / no especificado
+_atlas_data[x, y, z] = 47   → "Hippocampus"
+
+AAL_LABELS es el diccionario que traduce ese numero a un nombre
+AAL_LABELS = {
+    0:  "",
+    1:  "Frontal Pole",
+    2:  "Insular Cortex",
+    23: "Precentral Gyrus",
+    47: "Hippocampus",
+    ...
+}
+
+'''
+
 def is_critical(label_name: str) -> bool:
     return any(kw.lower() in label_name.lower() for kw in CRITICAL_KEYWORDS)
 
 def localizar(centroid_vox, affine):
-    cy, cx = centroid_vox   # regionprops da (row, col)
-    
-    # Dimensiones del volumen del paciente
+    cy, cx = centroid_vox
     sx, sy, sz = data.shape[:3]
-    
-    # Dimensiones del atlas Harvard-Oxford (91x109x91 a 2mm)
     ax_dim, ay_dim, az_dim = _atlas_data.shape[:3]
-    
-    # Escalar coordenadas del paciente al espacio del atlas por proporción
-    ax = int(round(cx / sx * ax_dim))
-    ay = int(round(cy / sy * ay_dim))
+
+    # Proporción directa vóxel paciente → vóxel atlas
+    # El atlas Harvard-Oxford cort está en espacio MNI 2mm, 91x109x91
+    ax = int(round(cx   / sx * ax_dim))
+    ay = int(round(cy   / sy * ay_dim))
     az = int(round(FRAME / sz * az_dim))
-    
-    # Verificar límites
+
+    print(f"  Vóxel paciente ({cx:.0f}, {cy:.0f}, {FRAME}) → atlas ({ax}, {ay}, {az})")
+
     if not (0 <= ax < ax_dim and 0 <= ay < ay_dim and 0 <= az < az_dim):
         return "Fuera del espacio del atlas", False
 
     label_idx = int(_atlas_data[ax, ay, az])
-    
     if label_idx == 0:
-        # Buscar en vóxeles vecinos
-        for dx, dy, dz in [(3,0,0),(-3,0,0),(0,3,0),(0,-3,0),(0,0,3),(0,0,-3)]:
+        for dx, dy, dz in [(5,0,0),(-5,0,0),(0,5,0),(0,-5,0),(0,0,5),(0,0,-5)]:
             nx, ny, nz = ax+dx, ay+dy, az+dz
             if 0<=nx<ax_dim and 0<=ny<ay_dim and 0<=nz<az_dim:
                 idx2 = int(_atlas_data[nx, ny, nz])
@@ -83,8 +98,6 @@ def localizar(centroid_vox, affine):
 
     nombre = AAL_LABELS.get(label_idx, f"Región {label_idx}")
     return nombre, is_critical(nombre)
-
-
 # ══════════════════════════════════════════════════════════════
 #  PASO 1 — CARGA
 # ══════════════════════════════════════════════════════════════
@@ -113,7 +126,7 @@ sigma_ruido = np.std(centro) * 0.1
 sigma_ruido = max(sigma_ruido, 0.02)
 
 # Corrección de sesgo (mejora separación tumor/cerebro)
-squared   = image**4 - 2 * (sigma_ruido**2)
+squared   = image**2 - 2 * (sigma_ruido**2)
 corrected = np.sqrt(np.maximum(squared, 0))
 
 # NL-means
@@ -133,9 +146,9 @@ print("  Preprocesamiento completado ✓")
 print(f"  sigma_ruido: {sigma_ruido:.6f}")
 print(f"  h_nlm: {h_nlm:.6f}")
 # ══════════════════════════════════════════════════════════════
-#  PASO 3 — SKULL STRIPPING + SEGMENTACIÓN  (de Nato)
+#  PASO 3 — DESPRENDIMIENTO DEL CRÁNEO + SEGMENTACIÓN  (de Nato)
 # ══════════════════════════════════════════════════════════════
-print("\n[2/4] Skull stripping...")
+print("\n[2/4] DESPRENDIMIENTO DEL CRÁNEO...")
 
 # Umbral de Otsu sobre el frame preprocesado
 umbral_otsu    = filters.threshold_otsu(frame_gauss)
@@ -165,14 +178,34 @@ for i in range(len(solidez_filtrada)):
 mascara_rellena = binary_fill_holes(mascara)
 frame_stripped  = frame_gauss * mascara_rellena.astype(float)
 
-print("  Skull stripping completado ✓")
+# DEBUG — ver distribución de valores
+brain_vals = frame_stripped[mascara_rellena]
+print(f"  brain_vals min: {brain_vals.min():.4f}")
+print(f"  brain_vals max: {brain_vals.max():.4f}")
+print(f"  brain_vals mean: {brain_vals.mean():.4f}")
+print(f"  percentil 80: {np.percentile(brain_vals, 80):.4f}")
+print(f"  percentil 85: {np.percentile(brain_vals, 85):.4f}")
+print(f"  percentil 90: {np.percentile(brain_vals, 90):.4f}")
+print(f"  percentil 95: {np.percentile(brain_vals, 95):.4f}")
+
+# Ver valor en la zona del tumor visualmente (aproximado)
+# El tumor se ve en la parte inferior izquierda del frame
+# Tomamos un parche en esa zona
+h, w = frame_stripped.shape
+parche = frame_stripped[h//4:h//2, w//4:w//2]
+print(f"  Max en parche inferior-izq: {parche.max():.4f}")
+print(f"  Mean en parche inferior-izq: {parche.mean():.4f}")
+
+
+
+print("  DESPRENDIMIENTO DEL CRÁNEO completado ✓")
 
 # ── Detección del tumor: patrón de anillo ──────────────────
 print("\n[3/4] Detectando tumor (patrón anillo)...")
 
 brain_vals  = frame_stripped[mascara_rellena]
-thresh_high = np.percentile(brain_vals, 22) # mas alto valor , más exigente → solo lo más brillante, mayor a 50 no detecta nada xq la region tumoral no es tan brillante,  50 es el limite maximo
-thresh_low  = np.percentile(brain_vals, 15)
+thresh_high = np.percentile(brain_vals, 95) # mas alto valor , más exigente → solo lo más brillante, mayor a 50 no detecta nada xq la region tumoral no es tan brillante,  50 es el limite maximo
+thresh_low  = np.percentile(brain_vals, 10)
 
 # Borde brillante del tumor
 bright_mask = (frame_stripped > thresh_high) & mascara_rellena
@@ -198,9 +231,44 @@ n_reg         = labeled_tumor.max()
 tumor_mask = np.zeros_like(tumor_candidate, dtype=bool)
 min_voxels = 80
 
+brain_rows = np.where(mascara_rellena.any(axis=1))[0]
+brain_cols = np.where(mascara_rellena.any(axis=0))[0]
+brain_row_min, brain_row_max = brain_rows[0], brain_rows[-1]
+brain_height = brain_row_max - brain_row_min
+
+
 h, w = frame_stripped.shape
 for reg in regionprops(labeled_tumor):
     if reg.area < min_voxels:
+        continue
+    
+    cy_r, cx_r = reg.centroid
+    print(f"  brain_row_min: {brain_row_min}, brain_row_max: {brain_row_max}")
+    print(f"  brain_height: {brain_height}")
+    pos_relativa = (cy_r - brain_row_min) / brain_height
+    print(f"  Región {reg.label}: cy_r={cy_r:.1f}, pos_relativa={pos_relativa:.2f}, area={reg.area}")
+    if pos_relativa > 0.75:
+        continue
+    # Filtro posición — descartar 25% superior del bounding box (zona de ojos)
+    '''
+    cy_r=43.0, pos_relativa=0.19 → está en el 19% inferior del bounding box, no en el superior
+    El bounding box va de fila 13 a 167, y el ojo está en fila 43 — que es la parte inferior de la imagen transpuesta
+
+    El problema es que la imagen se muestra con .T (transpuesta) en matplotlib, pero regionprops trabaja sobre el array sin transponer. Entonces "arriba" en la imagen visual es "abajo" en las coordenadas del array.
+    El ojo está en pos_relativa=0.19 — o sea en el 19% desde brain_row_min. Hay que invertir el filtro, cambiando >0,75 a <0,25
+    '''
+    pos_relativa = (cy_r - brain_row_min) / brain_height
+    if pos_relativa < 0.25:#descarta el 25% inferior del bounding box ( zona de los ojos en coord de array)
+        continue
+
+    # Filtro borde lateral — descartar regiones muy pegadas al borde izquierdo o derecho
+    fraccion_lateral = cx_r / w
+    if fraccion_lateral < 0.15 or fraccion_lateral > 0.85:
+        continue
+
+    # Filtro máscara — el centroide debe estar dentro del cerebro real
+    cy_int, cx_int = int(round(cy_r)), int(round(cx_r))
+    if not mascara_rellena[cy_int, cx_int]:
         continue
 
     # Filtro 1 — excentricidad: descarta líneas y estructuras alargadas
@@ -212,16 +280,16 @@ for reg in regionprops(labeled_tumor):
     if region_vals.std() < 0.04:
         continue
 
-    # Filtro 3 — no estar en el centro sagital (hoz cerebral)
-    cx_r = reg.centroid[0]
-    fraccion_x = cx_r / h
-    if 0.40 < fraccion_x < 0.60:
+   # Filtro 3 — no estar en el centro sagital (hoz cerebral)
+    cy_r, cx_r = reg.centroid    # cy_r = fila, cx_r = columna
+    fraccion_x = cx_r / w        # dividir columna por ancho
+    if 0.40 < fraccion_x < 0.60 and reg.area < 300:
         continue
 
     # Filtro 4 — intensidad media suficientemente alta
-    if region_vals.mean() < thresh_high * 0.80:
+    if region_vals.mean() < thresh_high * 0.50:
         continue
-
+    
     tumor_mask[labeled_tumor == reg.label] = True
 
 print(f"  Regiones detectadas: {label(tumor_mask).max()} ✓")
@@ -280,9 +348,16 @@ for ax, img_data, titulo in zip(axes, imagenes, titulos):
     ax.axis('off')
     ax.set_facecolor('#0d0d1a')
 
-# Overlay rojo en el tercer panel
+# Overlay con dos colores: rojo=crítico, naranja=no crítico
 overlay = np.zeros((*tumor_mask.shape, 4))
-overlay[tumor_mask] = [1.0, 0.15, 0.15, 0.65]   # rojo semitransparente
+
+labeled_overlay = label(tumor_mask, connectivity=2)
+for reg in regionprops(labeled_overlay):
+    cy_r, cx_r = reg.centroid
+    _, es_critica = localizar((cy_r, cx_r), affine)
+    mascara_region = labeled_overlay == reg.label
+    overlay[mascara_region] = [1.0, 0.10, 0.10, 0.70]  # rojo siempre
+
 axes[2].imshow(overlay.transpose(1, 0, 2), origin='lower', aspect='auto')
 
 # Etiquetas sobre cada región
@@ -301,15 +376,16 @@ for reg in regiones_info:
     )
 
 # Leyenda
-patch_tumor = mpatches.Patch(color=(1, 0.15, 0.15, 0.65), label='Región sospechosa')
-axes[2].legend(handles=[patch_tumor], loc='lower left',
+patch_tumor    = mpatches.Patch(color=(1.0, 0.10, 0.10, 0.70), label='Tumor detectado')
+patch_critico  = mpatches.Patch(color=(1.0, 0.55, 0.00, 0.70), label='Zona crítica adyacente')
+axes[2].legend(handles=[patch_tumor, patch_critico], loc='lower left',
                facecolor='#1a1a2e', labelcolor='white', fontsize=8)
 
 # Panel de texto con reporte
 if regiones_info:
     reporte = ""
     for i, reg in enumerate(regiones_info, 1):
-        alerta = " ⚠ CRÍTICA" if reg["critica"] else ""
+        alerta = " ⚠️  CRÍTICA" if reg["critica"] else ""
         reporte += f"R{i}: {reg['nombre']}{alerta}\n     {reg['area']} px\n\n"
     fig.text(0.01, 0.15, reporte.strip(),
              color='white', fontsize=7.5, va='top',
