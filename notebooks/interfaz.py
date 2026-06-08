@@ -3,7 +3,7 @@ import os
 from PySide6 import QtCore, QtWidgets, QtGui
 import numpy as np
 import nibabel as nib
-import matplotlib.pyplot as plt
+
 
 class MyWidget(QtWidgets.QWidget):
     def __init__(self):
