@@ -82,5 +82,5 @@ h_difusion = histograma(difusion_n)
 
 #show(difusion_n,h_difusion,"Difusión Anisotrópica")
 
-dos =  anisotropic_diffusion(frame_n, niter=15, kappa=30, gamma=0.05)
-comparar(difusion_n,dos,"Plateaus between edges are smeared stronger")
+dos =  anisotropic_diffusion(frame_n, niter=10, kappa=30, gamma=0.05)
+comparar(frame,dos,"Plateaus between edges are smeared stronger")
