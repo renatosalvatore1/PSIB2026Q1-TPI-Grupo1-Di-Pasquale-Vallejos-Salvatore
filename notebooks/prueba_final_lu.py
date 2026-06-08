@@ -7,6 +7,9 @@ from skimage.measure import label, regionprops
 from skimage.feature import graycomatrix, graycoprops
 from scipy.ndimage import binary_fill_holes
 
+import matplotlib.pyplot as plt
+import nibabel as nib
+
 #~~~~~~~~~~~~~~~~~~~~~~
 #   PREPROCESAMIENTO
 #~~~~~~~~~~~~~~~~~~~~~~
@@ -124,4 +127,24 @@ def detectar_tumor(corte, mascara_tumor, resultado_glcm):
 
     return tumor_detectado
 
-#def total():
+#~~~~~~~~~~~~~~~
+#   UNIFICADO
+#~~~~~~~~~~~~~~~
+
+def total(corte):
+    prep = preprocesar(corte)
+    sin_craneo = segmentar_craneo(prep)
+    contraste = aumentar_contraste(sin_craneo)
+    tumor = segmentacion_tumor(contraste)
+
+    alpha = 0.4 #transparencia
+    corte_norm = (corte - corte.min()) / (corte.max() - corte.min())
+    imagen_rgb = np.stack([corte_norm] * 3, axis=-1)
+
+    overlay = imagen_rgb.copy()
+    overlay[tumor == 1] = [1.0, 0.0, 0.0]
+    
+    resultado = (1 - alpha) * imagen_rgb + alpha * overlay
+    
+    return resultado
+

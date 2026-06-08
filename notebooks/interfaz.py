@@ -4,6 +4,7 @@ from PySide6 import QtCore, QtWidgets, QtGui
 import numpy as np
 import nibabel as nib
 
+from prueba_final_lu import total
 
 class MyWidget(QtWidgets.QWidget):
     def __init__(self):
@@ -51,7 +52,7 @@ class MyWidget(QtWidgets.QWidget):
         if file_path:
             self.load_nii(file_path)
     
-    def load_nii(self, file_path): #acá podríamos poner TODO nuestro análisis
+    def load_nii(self, file_path):
         img = nib.load(file_path)
         data = img.get_fdata()
 
@@ -74,26 +75,29 @@ class MyWidget(QtWidgets.QWidget):
             return
 
         slice_data = self.volume[:, :, index]
+        slice_tumor = total(slice_data) #devuelve [height, weight, 3]
 
         # Normalizar a 0-255 para visualización
-        slice_min, slice_max = slice_data.min(), slice_data.max()
+        slice_min, slice_max = slice_tumor.min(), slice_tumor.max()
         if slice_max > slice_min:
-            slice_norm = (slice_data - slice_min) / (slice_max - slice_min) * 255
+            slice_norm = (slice_tumor - slice_min) / (slice_max - slice_min) * 255
         else:
-            slice_norm = np.zeros_like(slice_data)
+            slice_norm = np.zeros_like(slice_tumor)
         slice_norm = slice_norm.astype(np.uint8)
 
         # Rotar para orientación correcta (los .nii suelen venir transpuestos)
         slice_norm = np.rot90(slice_norm)
 
-        # Convertir a QPixmap para mostrarlo en el QLabel
-        height, width = slice_norm.shape
+        # Manejar RGC enves de QtGui.QImage.Format_Grayscale8
+        height, width, channels = slice_norm.shape
+        bytes_per_line = width * channels #3 bytes por píxel en RGB
+
         q_image = QtGui.QImage(
             slice_norm.tobytes(),
             width,
             height,
-            width,  # bytes por línea
-            QtGui.QImage.Format_Grayscale8
+            bytes_per_line,
+            QtGui.QImage.Format_RGB888
         )
         pixmap = QtGui.QPixmap.fromImage(q_image)
         pixmap = pixmap.scaled(
