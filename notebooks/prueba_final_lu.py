@@ -6,8 +6,8 @@ from skimage.morphology import closing, footprint_rectangle, erosion
 from skimage.measure import label, regionprops
 from skimage.feature import graycomatrix, graycoprops
 from scipy.ndimage import binary_fill_holes
-
-import matplotlib.pyplot as plt
+from nilearn import datasets
+from nilearn.image import load_img
 import nibabel as nib
 
 #~~~~~~~~~~~~~~~~~~~~~~
@@ -112,7 +112,7 @@ def analisis_texturas(frame,mascara_tumor):
         promedio_sano = feature_sano.mean()
         resultado_glcm.append([feature, promedio_sano, promedio_tumor])
 
-    return resultado_glcm
+    return resultado_glcm, props_tumor
 
 def detectar_tumor(corte, mascara_tumor, resultado_glcm):
     tumor_detectado = 0
@@ -126,6 +126,35 @@ def detectar_tumor(corte, mascara_tumor, resultado_glcm):
         tumor_detectado = 1 #se detecto tumor
 
     return tumor_detectado
+
+#~~~~~~~~~~~
+#   ATLAS
+#~~~~~~~~~~~
+
+def atlas(fila_tumor, columna_tumor, numero_de_corte, file_path):
+    atlas_sub = datasets.fetch_atlas_harvard_oxford('sub-maxprob-thr25-2mm') #subcortical
+
+    atlas_sub_img   = load_img(atlas_sub.maps)
+    data = nib.load(file_path)
+
+    paciente_affine = data.affine
+    atlas_affine = atlas_sub_img.affine
+    atlas_affine_inv = np.linalg.inv(atlas_affine)
+    atlas_sub_data  = atlas_sub_img.get_fdata()
+    labels = atlas_sub.labels
+    voxel_tumor = np.array([fila_tumor, columna_tumor, numero_de_corte,1])
+    voxel_tumor_MNI = paciente_affine @ voxel_tumor
+    voxel_atlas = atlas_affine_inv @ voxel_tumor_MNI #esto tiene las coordenadas del atlas para nuestra region
+
+    ax = int(voxel_atlas[0])
+    ay = int(voxel_atlas[1])
+    az = int(voxel_atlas[2])
+
+    numero_region = int(atlas_sub_data[ax, ay, az])
+    nombre_region = labels[numero_region]
+    print(nombre_region)
+
+    return nombre_region
 
 #~~~~~~~~~~~~~~~
 #   UNIFICADO
@@ -146,5 +175,5 @@ def total(corte):
     
     resultado = (1 - alpha) * imagen_rgb + alpha * overlay
     
-    return resultado
+    return resultado, tumor
 
