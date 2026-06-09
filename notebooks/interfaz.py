@@ -65,6 +65,11 @@ class MyWidget(QtWidgets.QWidget):
     
     def load_nii(self, file_path):
         self.file_path = file_path
+
+        # Extraer nombre del sujeto del path
+        nombre_sujeto = os.path.basename(file_path).split('_')[0]  # → "sub-KA02"
+        self.title.setText(f"Interfaz Diagnóstico de Tumor Cerebral — {nombre_sujeto}")
+
         img = nib.load(file_path)
         data = img.get_fdata()
 
