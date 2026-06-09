@@ -35,19 +35,25 @@ def segmentar_craneo(corte):
 #umbral
     umbral = filters.threshold_otsu(corte)
     imagen_binaria = corte > umbral
+    '''
     print("IMAGEN UMBRALIZADA")
     plt.imshow(imagen_binaria[:,:],cmap='gray')
     plt.show()
+    '''
 
 #aplicamos morfologia
     imagen_binaria_erosionada = erosion(imagen_binaria, footprint_rectangle((1,2)))
+    '''
     print("POST EROSION")
     plt.imshow(imagen_binaria_erosionada[:,:],cmap='gray')
     plt.show()
+    '''
     imagen_binaria_closing = closing(imagen_binaria_erosionada, footprint_rectangle((1,2)))
+    '''
     print("POST CLOSING")
     plt.imshow(imagen_binaria_closing[:,:],cmap='gray')
     plt.show()
+    '''
     
 #etiquetado y mascara
     etiquetas = label(imagen_binaria_closing, connectivity=2)
@@ -69,22 +75,29 @@ def segmentar_craneo(corte):
         if solidez[i] != solidez.min():
             n = etiquetas == (i+1)
         mascara = mascara + n
+
+    '''
     print("MASCARA ANTES DE FILL HOLES")
     plt.imshow(mascara[:,:], cmap='gray')
     plt.show()
+    '''
     mascara_rellena = binary_fill_holes(mascara)
     resultado = corte * mascara_rellena
+    '''
     print("MASCARA")
     plt.imshow(mascara_rellena[:,:],cmap='gray')
     plt.show()
-    
+    '''
+
     resultado = corte * mascara_rellena
+    '''
     print("RESULTADO")
     plt.imshow(resultado[:,:],cmap='gray')
     plt.show()
     print("corte")
     plt.imshow(corte[:,:],cmap='gray')
     plt.show()
+    '''
     return resultado
 
 
@@ -111,8 +124,9 @@ def aumentar_contraste(frame):
 
 
 #ANALISIS DE TEXTURAS
-resultado_glcm = []
+
 def analisis_texturas(frame,mascara_tumor): 
+    resultado_glcm = []
     features = ["contrast",
                 "homogeneity",
                 "energy"]
@@ -126,6 +140,7 @@ def analisis_texturas(frame,mascara_tumor):
 
     props_tumor = regionprops(mascara_tumor.astype(int))[0]
     min_row, min_col, max_row, max_col = props_tumor.bbox
+    fila_tumor, columna_tumor = props_tumor.centroid
     tumor_crop = tumor_segmentado[min_row:max_row, min_col:max_col]
     props_sano = regionprops(mascara_region_sana.astype(int))[0]
     min_row, min_col, max_row, max_col = props_sano.bbox
@@ -144,7 +159,7 @@ def analisis_texturas(frame,mascara_tumor):
         #desvio_sano = feature_sano.std()
         resultado_glcm.append([feature, promedio_sano, promedio_tumor])
 
-    return resultado_glcm
+    return resultado_glcm,fila_tumor, columna_tumor
 
 #SEGMENTACION TUMOR
 
@@ -162,24 +177,44 @@ def segmentacion_tumor(cerebro_contraste_aumentado,corte,cerebro_segmentado):
 
     solidez = np.array([region.solidity for region in propiedades])
     #print(solidez[indice_area_mayor-1])
+    '''
     plt.imshow(mascara,cmap='gray')
     plt.show()
     plt.imshow(mascara_tumor,cmap='gray')
     plt.show()
     plt.imshow(tumor_segmentado,cmap='gray')
     plt.show()
+    '''
+
     #llamamos glcm
-    resultado_glcm = analisis_texturas(corte,mascara_tumor)
+    resultado_glcm,fila_tumor, columna_tumor = analisis_texturas(corte,mascara_tumor)
 
     homogeneidad = resultado_glcm[1][2]
     print(homogeneidad)
-    if homogeneidad > 0.68:
+    if homogeneidad > 0.68 or homogeneidad < 0.56:
         tumor_detectado = 0 #no se detecto tumor
+        print("NO DETECATDO")
     else:
         tumor_detectado = 1 #se detecto tumor
+        print("DETECATDO")
 
-    return resultado_glcm,tumor_detectado
+    return resultado_glcm,tumor_detectado,mascara_tumor,fila_tumor, columna_tumor
 
+
+def imagen_final(slice_data, mascara_tumor,tumor_detectado):
+    
+    # normalizar a [0,255] y convertir a RGB
+    slice_norm = (slice_data - slice_data.min()) / (slice_data.max() - slice_data.min()) * 255
+    imagen_rgb = np.stack([slice_norm, slice_norm, slice_norm], axis=-1)
+    
+    if tumor_detectado == 1:
+        # color naranja: R=255, G=165, B=0
+        alpha = 0.5
+        imagen_rgb[mascara_tumor, 0] = alpha * 255 + (1 - alpha) * imagen_rgb[mascara_tumor, 0]  # R
+        imagen_rgb[mascara_tumor, 1] = alpha * 165 + (1 - alpha) * imagen_rgb[mascara_tumor, 1]  # G
+        imagen_rgb[mascara_tumor, 2] = alpha * 0   + (1 - alpha) * imagen_rgb[mascara_tumor, 2]  # B
+        
+    return imagen_rgb.astype(np.uint8)
 
 
 
