@@ -48,4 +48,5 @@ def atlas(fila_tumor, columna_tumor,numero_de_corte,file_path,tumor_detectado):
                 nombre_region = "Region no indexada por el atlas."
     else:
         nombre_region = "No se detectaron tumores."
+
     return nombre_region

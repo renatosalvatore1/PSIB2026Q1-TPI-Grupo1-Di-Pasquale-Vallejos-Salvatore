@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from skimage import filters, color, io
 from skimage import segmentation
 from skimage import morphology
-from skimage.morphology import opening, closing, disk, footprint_rectangle, erosion
+from skimage.morphology import opening, closing, disk, footprint_rectangle, erosion,dilation
 from skimage.measure import label, regionprops
 import numpy as np
 from skimage.feature import graycomatrix, graycoprops
@@ -35,33 +35,14 @@ def segmentar_craneo(corte):
 #umbral
     umbral = filters.threshold_otsu(corte)
     imagen_binaria = corte > umbral
-    '''
-    print("IMAGEN UMBRALIZADA")
-    plt.imshow(imagen_binaria[:,:],cmap='gray')
-    plt.show()
-    '''
 
 #aplicamos morfologia
     imagen_binaria_erosionada = erosion(imagen_binaria, footprint_rectangle((1,2)))
-    '''
-    print("POST EROSION")
-    plt.imshow(imagen_binaria_erosionada[:,:],cmap='gray')
-    plt.show()
-    '''
-    imagen_binaria_closing = closing(imagen_binaria_erosionada, footprint_rectangle((1,2)))
-    '''
-    print("POST CLOSING")
-    plt.imshow(imagen_binaria_closing[:,:],cmap='gray')
-    plt.show()
-    '''
+    imagen_binaria_closing = dilation(imagen_binaria_erosionada, footprint_rectangle((1,2)))
     
 #etiquetado y mascara
     etiquetas = label(imagen_binaria_closing, connectivity=2)
     propiedades = regionprops(etiquetas)
-    #areas = [region.area for region in propiedades]
-    #print("Cantidad de componentes:", len(areas))
-    #print("Area de la componente mayor:", max(areas))
-    #indice = np.argmax(areas)
     solidez = np.array([region.solidity for region in propiedades])
     print(solidez)
     eliminar = (solidez != solidez.max()) & (solidez != solidez.min())
@@ -75,34 +56,9 @@ def segmentar_craneo(corte):
         if solidez[i] != solidez.min():
             n = etiquetas == (i+1)
         mascara = mascara + n
-
-    '''
-    print("MASCARA ANTES DE FILL HOLES")
-    plt.imshow(mascara[:,:], cmap='gray')
-    plt.show()
-    '''
     mascara_rellena = binary_fill_holes(mascara)
     resultado = corte * mascara_rellena
-    '''
-    print("MASCARA")
-    plt.imshow(mascara_rellena[:,:],cmap='gray')
-    plt.show()
-    '''
-
-    resultado = corte * mascara_rellena
-    '''
-    print("RESULTADO")
-    plt.imshow(resultado[:,:],cmap='gray')
-    plt.show()
-    print("corte")
-    plt.imshow(corte[:,:],cmap='gray')
-    plt.show()
-    '''
     return resultado
-
-
-
-
 
 
 #AUMENTAR CONTRASTE
@@ -176,15 +132,6 @@ def segmentacion_tumor(cerebro_contraste_aumentado,corte,cerebro_segmentado):
     tumor_segmentado = cerebro_segmentado * mascara_tumor
 
     solidez = np.array([region.solidity for region in propiedades])
-    #print(solidez[indice_area_mayor-1])
-    '''
-    plt.imshow(mascara,cmap='gray')
-    plt.show()
-    plt.imshow(mascara_tumor,cmap='gray')
-    plt.show()
-    plt.imshow(tumor_segmentado,cmap='gray')
-    plt.show()
-    '''
 
     #llamamos glcm
     resultado_glcm,fila_tumor, columna_tumor = analisis_texturas(corte,mascara_tumor)

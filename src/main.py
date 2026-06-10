@@ -20,7 +20,6 @@ from operaciones import aumentar_contraste, segmentacion_tumor, segmentar_craneo
 from atlas import atlas
 
 
-
 def procesar(corte, indice, file_path):
     cerebro_segmentado = segmentar_craneo(corte)
     cerebro_contraste = aumentar_contraste(cerebro_segmentado)

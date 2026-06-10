@@ -1,6 +1,7 @@
 # Virtual environment
 venv/
 
+notebooks/
 
 # Python
 __pycache__/
@@ -10,6 +11,7 @@ __pycache__/
 # Mac
 .DS_Store
 .vscode
+.claude
 
 git rm --cached ds003969
 echo "ds003969/" >> .gitignore
