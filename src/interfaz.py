@@ -114,5 +114,5 @@ class MyWidget(QtWidgets.QWidget):
         self.image_label.setPixmap(pixmap)
         self.slice_info.setText(f"Frame (slice axial): {index + 1} / {self.volume.shape[2]}")
         self.info_box.setText(f"Localización del tumor:\n{zona}")
-        #self.info_box.repaint()
+
 
