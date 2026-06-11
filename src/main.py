@@ -16,12 +16,14 @@ import nibabel as nib
 import numpy as np
 from PySide6 import QtWidgets
 from interfaz import MyWidget
+from preprocesamiento import preprocesar
 from operaciones import aumentar_contraste, segmentacion_tumor, segmentar_craneo, analisis_texturas, imagen_final
 from atlas import atlas
 
 
 def procesar(corte, indice, file_path):
-    cerebro_segmentado = segmentar_craneo(corte)
+    corte_preprocesado = preprocesar(corte)
+    cerebro_segmentado = segmentar_craneo(corte_preprocesado)
     cerebro_contraste = aumentar_contraste(cerebro_segmentado)
     matriz_glcm,tumor_detectado,mascara_tumor,fila_tumor, columna_tumor = segmentacion_tumor(cerebro_contraste,corte, cerebro_segmentado)
     region_cerebro = atlas(fila_tumor, columna_tumor,indice,file_path,tumor_detectado)
